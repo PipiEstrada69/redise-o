@@ -1,5 +1,13 @@
-import { Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react'
-import { crownBrandLogoUrl, routes, shippingInfo, socialLinks } from '../data'
+import { ChevronDown, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  crownBrandLogoUrl,
+  headerFlatNavRoutes,
+  isShopNavContext,
+  shippingInfo,
+  shopNavSubLinks,
+  socialLinks,
+} from '../data'
 
 function Header({
   currentPath,
@@ -12,12 +20,28 @@ function Header({
   mobileOpen,
   setMobileOpen,
 }) {
-  const goTo = (path) => {
+  const [mobileShopOpen, setMobileShopOpen] = useState(false)
+  const [shopDropdownSuppress, setShopDropdownSuppress] = useState(false)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sincronizar UI del desplegable al cambiar de ruta (el hover vuelve a abrir el menú sin depender del mouseLeave previo).
+    setShopDropdownSuppress(false)
+  }, [currentPath])
+
+  const goTo = (path, { closeShopDropdown = false } = {}) => {
     navigate(path)
     setMobileOpen(false)
+    setMobileShopOpen(false)
+    if (closeShopDropdown) {
+      setShopDropdownSuppress(true)
+      if (typeof document !== 'undefined') document.activeElement?.blur()
+    }
   }
 
   const highlight = navHighlightPath ?? currentPath
+  const shopNavActive = isShopNavContext(highlight)
+
+  const [inicioRoute, ...restFlatRoutes] = headerFlatNavRoutes
 
   return (
     <header className="site-header">
@@ -60,7 +84,44 @@ function Header({
         </button>
 
         <nav className="desktop-nav" aria-label="Navegación principal">
-          {routes.slice(1).map((route) => (
+          <button
+            type="button"
+            className={highlight === inicioRoute.path ? 'active' : ''}
+            onClick={() => goTo(inicioRoute.path)}
+          >
+            {inicioRoute.label}
+          </button>
+
+          <div
+            className={`nav-dropdown${shopDropdownSuppress ? ' nav-dropdown--suppress-panel' : ''}`}
+            onMouseLeave={() => setShopDropdownSuppress(false)}
+          >
+            <button
+              type="button"
+              className={`nav-dropdown__trigger ${shopNavActive ? 'active' : ''}`}
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="Tienda, menú de categorías"
+            >
+              Tienda
+              <ChevronDown size={16} strokeWidth={2.25} className="nav-dropdown__chevron" aria-hidden="true" />
+            </button>
+            <div className="nav-dropdown__panel" role="menu">
+              {shopNavSubLinks.map((link) => (
+                <button
+                  key={link.path}
+                  type="button"
+                  role="menuitem"
+                  className={`nav-dropdown__link ${currentPath === link.path ? 'is-active' : ''}`}
+                  onClick={() => goTo(link.path, { closeShopDropdown: true })}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {restFlatRoutes.map((route) => (
             <button
               type="button"
               key={route.path}
@@ -88,7 +149,41 @@ function Header({
 
       {mobileOpen && (
         <nav className="mobile-nav" aria-label="Navegación móvil">
-          {routes.map((route) => (
+          <button
+            type="button"
+            className={highlight === inicioRoute.path ? 'active' : ''}
+            onClick={() => goTo(inicioRoute.path)}
+          >
+            {inicioRoute.label}
+          </button>
+
+          <div className={`mobile-nav__shop${mobileShopOpen ? ' is-open' : ''}`}>
+            <button
+              type="button"
+              className={`mobile-nav__shop-toggle ${shopNavActive ? 'active' : ''}`}
+              aria-expanded={mobileShopOpen}
+              onClick={() => setMobileShopOpen((o) => !o)}
+            >
+              Tienda
+              <ChevronDown size={18} className="mobile-nav__shop-chevron" aria-hidden="true" />
+            </button>
+            {mobileShopOpen && (
+              <div className="mobile-nav__shop-panel">
+                {shopNavSubLinks.map((link) => (
+                  <button
+                    key={link.path}
+                    type="button"
+                    className={currentPath === link.path ? 'active' : ''}
+                    onClick={() => goTo(link.path)}
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {restFlatRoutes.map((route) => (
             <button
               type="button"
               key={route.path}

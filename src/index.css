@@ -7,6 +7,7 @@
   --orange: #ff6b00;
   --orange-soft: #fff0e6;
   --shadow: 0 28px 90px rgba(17, 17, 17, 0.16);
+  --catalog-grid-gap: 1rem;
   color: var(--ink);
   background: var(--bg);
   font-family:

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
   Mail,
   MapPin,
   Minus,
@@ -13,7 +12,14 @@ import {
 } from 'lucide-react'
 import './App.css'
 import { collectionFaqs } from './collectionFaqs.jsx'
-import { sortCatalogProducts } from './catalogUtils'
+import {
+  CheckoutConfirmationPage,
+  CheckoutEmpty,
+  CheckoutPaymentPage,
+  CheckoutShippingPage,
+  CheckoutSummaryPage,
+} from './CheckoutFlow.jsx'
+import { listPriceWithoutTaxLabel, sortCatalogProducts } from './catalogUtils'
 import Breadcrumbs from './components/Breadcrumbs'
 import CategoryCard from './components/CategoryCard'
 import CollectionFaqSection from './components/CollectionFaqSection'
@@ -28,15 +34,12 @@ import {
   energyBar,
   getProductForPage,
   libraryTopics,
+  parsePriceEuro,
   pathToNavLabel,
   productFamilies,
-  reasonCards,
-  reviewItems,
   scienceCards,
-  shippingInfo,
   shopGoals,
   socialLinks,
-  sportHighlights,
   trustItems,
   visualProducts,
 } from './data'
@@ -46,6 +49,7 @@ function App() {
     typeof window !== 'undefined' ? window.location.pathname || '/' : '/',
   )
   const [cartItems, setCartItems] = useState([])
+  const [lastOrder, setLastOrder] = useState(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -82,6 +86,18 @@ function App() {
     const slug = product.slug || product.id
     const image =
       product.image || (typeof slug === 'string' ? crownStoreProductImages[slug] : null) || null
+    const priceStr =
+      typeof product.price === 'string'
+        ? product.price
+        : product.price != null
+          ? String(product.price)
+          : null
+    const priceValue =
+      typeof product.priceValue === 'number' && !Number.isNaN(product.priceValue)
+        ? product.priceValue
+        : priceStr
+          ? parsePriceEuro(priceStr)
+          : null
     const item = {
       id: slug || product.title,
       name: product.name || product.title,
@@ -89,6 +105,8 @@ function App() {
       flavor: options.flavor || 'Selección visual',
       quantity: options.quantity || 1,
       image,
+      price: priceStr,
+      priceValue,
     }
 
     setCartItems((items) => {
@@ -122,22 +140,43 @@ function App() {
     )
   }
 
+  const completeOrder = (payload) => {
+    setLastOrder({ ...payload, createdAt: Date.now() })
+    setCartItems([])
+  }
+
   const renderPage = () => {
+    const checkoutPaths = ['/checkout', '/checkout/envio', '/checkout/pago', '/checkout/confirmacion']
+    if (currentPath.startsWith('/checkout')) {
+      if (!checkoutPaths.includes(currentPath)) {
+        return <CheckoutEmpty navigate={navigate} />
+      }
+      if (cartItems.length === 0 && currentPath !== '/checkout/confirmacion') {
+        return <CheckoutEmpty navigate={navigate} />
+      }
+      if (currentPath === '/checkout') {
+        return <CheckoutSummaryPage navigate={navigate} cartItems={cartItems} />
+      }
+      if (currentPath === '/checkout/envio') {
+        return <CheckoutShippingPage navigate={navigate} cartItems={cartItems} />
+      }
+      if (currentPath === '/checkout/pago') {
+        return (
+          <CheckoutPaymentPage navigate={navigate} cartItems={cartItems} onCompleteOrder={completeOrder} />
+        )
+      }
+      if (currentPath === '/checkout/confirmacion') {
+        return <CheckoutConfirmationPage navigate={navigate} lastOrder={lastOrder} />
+      }
+    }
+
     if (currentPath === '/') {
       return (
         <>
           <Hero navigate={navigate} />
-          <TrustStrip />
-          <ShippingGuarantees />
           <CategoriesSection navigate={navigate} />
-          <FeaturedProduct navigate={navigate} onAdd={addToCart} />
-          <ProductGrid navigate={navigate} onAdd={addToCart} />
-          <ScienceTrustSection />
-          <CrownClubSection />
-          <ReviewsStrip />
-          <ReasonsSection />
-          <SciencePreview navigate={navigate} />
-          <CtaBand navigate={navigate} />
+          <TrustStrip />
+          <WhyCrownBrief navigate={navigate} />
         </>
       )
     }
@@ -183,6 +222,10 @@ function App() {
       setAccountOpen={setAccountOpen}
       mobileOpen={mobileOpen}
       setMobileOpen={setMobileOpen}
+      onBeginCheckout={() => {
+        setCartOpen(false)
+        navigate('/checkout')
+      }}
     >
       {renderPage()}
     </Layout>
@@ -191,39 +234,32 @@ function App() {
 
 function Hero({ navigate }) {
   return (
-    <section className="hero-section section">
-      <div className="hero-copy">
-        <p className="eyebrow">Rediseño académico de ecommerce deportivo</p>
-        <h1>Nutrición deportiva más clara, rápida y preparada para cualquier pantalla.</h1>
-        <p>
-          Propuesta visual inspirada en Crown Sport Nutrition, con navegación ordenada,
-          producto protagonista y una experiencia premium sin compras reales.
+    <section className="hero-section hero-section--basic section">
+      <div className="hero-copy hero-copy--brand">
+        <p className="eyebrow">Crown Sport Nutrition</p>
+        <h1 className="hero-brand-headline">
+          Especialistas en alto rendimiento, ciencia aplicada al deporte real
+        </h1>
+        <p className="hero-brand-lead">
+          Con estudios científicos propios, certificación antidopaje Informed Sport y formulaciones desarrolladas
+          junto a universidades, médicos, nutricionistas y deportistas de élite.
         </p>
         <div className="hero-actions">
-          <button type="button" className="primary-button" onClick={() => navigate('/producto/energy-bar')}>
-            Ver Energy Bar 2.0 <ArrowRight size={18} aria-hidden="true" />
+          <button type="button" className="primary-button" onClick={() => navigate('/tienda')}>
+            Ir a la tienda <ArrowRight size={18} aria-hidden="true" />
           </button>
-          <button type="button" className="secondary-button" onClick={() => navigate('/tienda')}>
-            Explorar tienda
+          <button type="button" className="secondary-button" onClick={() => navigate('/ciencia')}>
+            Ciencia y criterios
           </button>
         </div>
       </div>
-      <div className="hero-product-card">
-        <span>Energy Bar 2.0</span>
-        <div className="hero-product-card__photo-wrap">
-          <img
-            className="hero-product-card__photo"
-            src={energyBar.image}
-            alt={`${energyBar.name} — imagen de referencia crownsportnutrition.com`}
-            width={420}
-            height={420}
-            decoding="async"
-          />
-        </div>
-        <div className="hero-stats">
-          <div><strong>60 g</strong><span>Barrita</span></div>
-          <div><strong>12</strong><span>Caja</span></div>
-          <div><strong>{energyBar.price.split('·')[0].trim()}</strong><span>Desde / rango</span></div>
+      <div className="hero-abstract" aria-hidden="true">
+        <div className="hero-abstract__panel">
+          <span className="hero-abstract__kicker">Prototipo académico</span>
+          <p className="hero-abstract__line">Catálogo en Tienda, Barritas, Geles, Isotónico y Packs.</p>
+          <p className="hero-abstract__line hero-abstract__line--muted">
+            Home breve: menos scroll, decisión más rápida.
+          </p>
         </div>
       </div>
     </section>
@@ -232,119 +268,78 @@ function Hero({ navigate }) {
 
 function TrustStrip() {
   return (
-    <section className="trust-strip">
-      {trustItems.map((item) => {
-        const Icon = item.icon
-        return (
-          <div key={item.label}>
-            <Icon size={20} aria-hidden="true" />
-            <span>{item.label}</span>
-          </div>
-        )
-      })}
+    <section className="section home-trust">
+      <div className="trust-strip">
+        {trustItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <div key={item.label}>
+              <Icon size={20} aria-hidden="true" />
+              <span>{item.label}</span>
+            </div>
+          )
+        })}
+      </div>
     </section>
   )
 }
 
-function ShippingGuarantees() {
+function WhyCrownBrief({ navigate }) {
+  const bullets = [
+    {
+      title: 'Base científica y calidad',
+      text: 'Formulaciones pensadas para deporte de resistencia e intenso, con información ordenada por uso real en sesión.',
+    },
+    {
+      title: 'Confianza antidoping (gama referenciada)',
+      text: 'Muchas referencias del catálogo aluden a Informed Sport como sello de control en nutrición deportiva.',
+    },
+    {
+      title: 'Momentos claros: antes, durante, después',
+      text: 'En tienda y fichas se agrupa por objetivo para que elijas sin mezclar hidratación, energía y recuperación en un solo muro.',
+    },
+  ]
+
   return (
-    <section className="shipping-strip" aria-label="Garantías visuales de ecommerce">
-      {shippingInfo.map((item) => (
-        <div key={item}>
-          <CheckCircle2 size={18} aria-hidden="true" />
-          <span>{item}</span>
+    <section className="section home-why-crown" aria-labelledby="why-crown-heading">
+      <div className="home-why-crown__inner">
+        <div className="section-heading home-why-crown__heading-block section-heading--center">
+          <h2 id="why-crown-heading">¿Por qué Crown?</h2>
         </div>
-      ))}
+        <ul className="home-why-crown__list">
+          {bullets.map((item) => (
+            <li key={item.title}>
+              <ShieldCheck size={22} aria-hidden="true" className="home-why-crown__icon" />
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="home-why-crown__footer">
+          <button type="button" className="text-link" onClick={() => navigate('/ciencia')}>
+            Ampliar en biblioteca de ciencia <ArrowRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
     </section>
   )
 }
 
 function CategoriesSection({ navigate }) {
   return (
-    <section className="section">
-      <div className="section-heading">
-        <p className="eyebrow">Categorías principales</p>
-        <h2>Compra visual por objetivo deportivo</h2>
+    <section className="section home-categories">
+      <div className="section-heading section-heading--center">
+        <p className="eyebrow">Categorías</p>
+        <h2>Energía, hidratación y packs</h2>
+        <p className="section-lead">
+          Barritas, geles, isotónicos y packs: elige según lo que necesitas en cada sesión.
+        </p>
       </div>
       <div className="category-grid">
         {categories.map((category) => (
           <CategoryCard key={category.title} category={category} navigate={navigate} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function FeaturedProduct({ navigate, onAdd }) {
-  return (
-    <section className="featured-section section">
-      <div>
-        <p className="eyebrow">Producto destacado</p>
-        <h2>{energyBar.name}</h2>
-        <p>{energyBar.subtitle}</p>
-        <ul className="check-list">
-          {energyBar.benefits.slice(0, 4).map((benefit) => (
-            <li key={benefit}><CheckCircle2 size={18} aria-hidden="true" /> {benefit}</li>
-          ))}
-        </ul>
-        <div className="hero-actions">
-          <button type="button" className="primary-button" onClick={() => navigate('/producto/energy-bar')}>
-            Ver detalle <ChevronRight size={18} aria-hidden="true" />
-          </button>
-          <button type="button" className="secondary-button" onClick={() => onAdd(energyBar)}>
-            Añadir visualmente
-          </button>
-        </div>
-      </div>
-      <div className="nutrition-card nutrition-card--with-photo">
-        <img
-          className="nutrition-card__product"
-          src={energyBar.image}
-          alt=""
-          width={280}
-          height={280}
-          decoding="async"
-        />
-        <span>{energyBar.price}</span>
-        <h3>Avena + dátil</h3>
-        <p>Información presentada por beneficios, uso y formato para reducir fricción antes de comprar.</p>
-      </div>
-    </section>
-  )
-}
-
-function ProductGrid({ navigate, onAdd }) {
-  const featuredProducts = visualProducts.filter((product) => product.featured)
-
-  return (
-    <section className="section muted-section">
-      <div className="section-heading">
-        <p className="eyebrow">Productos destacados</p>
-        <h2>Selección principal de la tienda original</h2>
-      </div>
-      <div className="product-grid">
-        {featuredProducts.map((product) => (
-          <ProductCard key={product.slug} product={product} navigate={navigate} onAdd={onAdd} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ScienceTrustSection() {
-  return (
-    <section className="section science-trust-section">
-      <div className="section-heading">
-        <p className="eyebrow">Alto rendimiento</p>
-        <h2>Ciencia aplicada, seguridad y formulaciones premium</h2>
-      </div>
-      <div className="science-grid">
-        {scienceCards.map((card) => (
-          <article key={card.title}>
-            <strong>{card.metric}</strong>
-            <h3>{card.title}</h3>
-            <p>{card.text}</p>
-          </article>
         ))}
       </div>
     </section>
@@ -374,101 +369,12 @@ function CrownClubSection() {
   )
 }
 
-function ReviewsStrip() {
-  return (
-    <section className="reviews-strip">
-      {reviewItems.map((review) => (
-        <article key={review.source}>
-          <span>{review.source}</span>
-          <strong>{review.score}</strong>
-          <p>{review.detail}</p>
-        </article>
-      ))}
-    </section>
-  )
-}
-
-function ReasonsSection() {
-  return (
-    <section className="section">
-      <div className="section-heading">
-        <p className="eyebrow">Razones</p>
-        <h2>Los pilares que debe comunicar el rediseño</h2>
-      </div>
-      <div className="reason-grid">
-        {reasonCards.map((reason) => (
-          <article key={reason.title}>
-            <h3>{reason.title}</h3>
-            <p>{reason.text}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function CtaBand({ navigate }) {
-  return (
-    <section className="section cta-grid">
-      <article>
-        <p className="eyebrow">Distribución</p>
-        <h2>¿Quieres distribuir en tu club, tienda o centro?</h2>
-        <p>CTA visual inspirado en la web original. No envía datos ni inicia una solicitud real.</p>
-        <button type="button" className="primary-button" onClick={() => navigate('/contacto')}>
-          Quiero colaborar
-        </button>
-      </article>
-      <article>
-        <p className="eyebrow">Contacto</p>
-        <h2>Envíanos tu mensaje</h2>
-        <p>Formulario simulado para mantener una experiencia navegable sin recoger información personal.</p>
-        <button type="button" className="secondary-button" onClick={() => navigate('/contacto')}>
-          Contactar
-        </button>
-      </article>
-    </section>
-  )
-}
-
-function SciencePreview({ navigate }) {
-  return (
-    <section className="section sport-section">
-      <div className="section-heading">
-        <p className="eyebrow">Uso en deporte</p>
-        <h2>Contenido útil antes, durante y después</h2>
-      </div>
-      <div className="highlight-grid">
-        {sportHighlights.map((item) => {
-          const Icon = item.icon
-          return (
-            <article key={item.title}>
-              <Icon size={22} aria-hidden="true" />
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
-          )
-        })}
-      </div>
-      <button type="button" className="secondary-button" onClick={() => navigate('/ciencia')}>
-        Ver ciencia aplicada
-      </button>
-    </section>
-  )
-}
-
 function CollectionPage({ path, navigate, onAdd }) {
   const [activeFamily, setActiveFamily] = useState('Todos')
   const [activeGoal, setActiveGoal] = useState('Todos')
   const [sortBy, setSortBy] = useState('featured')
 
-  const titles = {
-    '/tienda': ['Tienda', 'Todos los productos del prototipo'],
-    '/barritas': ['Barritas', 'Energía sólida para resistencia'],
-    '/geles': ['Geles Energéticos', 'Energía rápida en formato visual'],
-    '/isotonico': ['Isotónico', 'Hidratación clara para esfuerzos largos'],
-    '/packs': ['Packs', 'Selecciones simuladas para entrenar mejor'],
-  }
-  const [title, subtitle] = titles[path]
+  const pageTitle = pathToNavLabel(path)
 
   const handleFamilyChange = (family) => {
     setActiveFamily(family)
@@ -507,24 +413,10 @@ function CollectionPage({ path, navigate, onAdd }) {
     }))
     .filter((group) => group.products.length > 0)
 
-  const crumbItems =
-    path === '/tienda'
-      ? [{ label: 'Inicio', path: '/' }, { label: title }]
-      : [
-          { label: 'Inicio', path: '/' },
-          { label: pathToNavLabel('/tienda'), path: '/tienda' },
-          { label: title },
-        ]
-
   return (
     <section className="section page-section">
-      <Breadcrumbs items={crumbItems} navigate={navigate} />
       <div className="page-hero">
-        <p className="eyebrow">Categoría</p>
-        <h1>{title}</h1>
-        <p>
-          {subtitle}. Mostrando {sortedProducts.length} producto(s) en modo visual, sin compras reales.
-        </p>
+        <h1>{pageTitle}</h1>
       </div>
 
       <div className="plp-toolbar">
@@ -548,7 +440,7 @@ function CollectionPage({ path, navigate, onAdd }) {
         <ProductFilters activeFamily={activeFamily} onChange={handleFamilyChange} />
       )}
 
-      {visibleGoals.length > 0 && (
+      {path !== '/tienda' && visibleGoals.length > 0 && (
         <div className="goal-bar" role="group" aria-label="Filtrar por objetivo de uso">
           <span className="goal-bar__label">Objetivo</span>
           <div className="goal-bar__chips">
@@ -684,7 +576,15 @@ function ProductDetailPage({ slug, navigate, onAdd }) {
 
   const handleAdd = () => {
     onAdd(
-      { slug: product.slug, id: product.id, name: displayTitle, title: displayTitle },
+      {
+        slug: product.slug,
+        id: product.id,
+        name: displayTitle,
+        title: displayTitle,
+        price: product.price,
+        priceValue: product.priceValue,
+        image: product.image,
+      },
       {
         format: product.formats?.[0] ? format : 'Formato único (visual)',
         flavor: hasFlavorOptions ? flavor : 'Producto sin variante de sabor (visual)',
@@ -740,7 +640,7 @@ function ProductDetailPage({ slug, navigate, onAdd }) {
           </div>
 
           <div className="price-line">
-            <strong>{product.price}</strong>
+            <strong>{listPriceWithoutTaxLabel(product.price)}</strong>
             <span>{product.tax}</span>
           </div>
 
@@ -807,7 +707,10 @@ function ProductDetailPage({ slug, navigate, onAdd }) {
             />
           )}
           <div>
-            <span className="pdp-sticky-cta__price">{product.price}</span>
+            <span className="pdp-sticky-cta__price">
+              {listPriceWithoutTaxLabel(product.price)}
+              {product.tax ? ` · ${product.tax}` : ''}
+            </span>
             <span className="pdp-sticky-cta__qty">× {quantity}</span>
           </div>
           <button type="button" className="primary-button pdp-sticky-cta__btn" onClick={handleAdd}>
@@ -1024,7 +927,7 @@ function RecommendedProducts({ navigate, relatedSlugs }) {
             <span className="mini-product__body">
               <span>{p.category}</span>
               <strong>{p.title}</strong>
-              <small>{p.price}</small>
+              <small>{listPriceWithoutTaxLabel(p.price)}</small>
             </span>
           </button>
         ))}

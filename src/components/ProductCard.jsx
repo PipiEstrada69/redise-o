@@ -1,4 +1,5 @@
 import { ArrowRight, ShoppingBag } from 'lucide-react'
+import { listPriceWithoutTaxLabel } from '../catalogUtils'
 
 function ProductCard({ product, navigate, onAdd }) {
   const goDetail = () => navigate(product.path)
@@ -35,7 +36,7 @@ function ProductCard({ product, navigate, onAdd }) {
         )}
         <div className="product-card__footer">
           <div>
-            <strong>{product.price}</strong>
+            <strong>{listPriceWithoutTaxLabel(product.price)}</strong>
             {product.family && <small>{product.family}</small>}
           </div>
           <div className="product-card__actions">

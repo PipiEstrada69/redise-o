@@ -1,5 +1,5 @@
 import { Mail, MapPin, MessageCircle } from 'lucide-react'
-import { contactInfo, crownBrandLogoUrl, routes, socialLinks } from '../data'
+import { contactInfo, crownBrandLogoUrl, routes, shopNavSubLinks, socialLinks } from '../data'
 
 function Footer({ navigate }) {
   return (
@@ -26,20 +26,25 @@ function Footer({ navigate }) {
           </p>
         </div>
         <div>
-          <h3>Explorar</h3>
-          {routes.slice(1, 6).map((route) => (
-            <button type="button" key={route.path} onClick={() => navigate(route.path)}>
-              {route.label}
+          <h3>Tienda</h3>
+          {shopNavSubLinks.map((link) => (
+            <button type="button" key={link.path} onClick={() => navigate(link.path)}>
+              {link.label}
             </button>
           ))}
+          <button type="button" onClick={() => navigate('/checkout')}>
+            Checkout (demo)
+          </button>
         </div>
         <div>
           <h3>Contenido</h3>
-          {routes.slice(6).map((route) => (
-            <button type="button" key={route.path} onClick={() => navigate(route.path)}>
-              {route.label}
-            </button>
-          ))}
+          {routes
+            .filter((r) => ['/blog', '/ciencia', '/contacto'].includes(r.path))
+            .map((route) => (
+              <button type="button" key={route.path} onClick={() => navigate(route.path)}>
+                {route.label}
+              </button>
+            ))}
         </div>
         <div>
           <h3>Referencia visual</h3>

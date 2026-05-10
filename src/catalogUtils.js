@@ -2,6 +2,12 @@
  * Ordenación de listados de catálogo (prototipo).
  */
 
+/** Precio de lista sin el sufijo fiscal (tarjetas / mini-listas; en PDP usar junto a `product.tax`). */
+export function listPriceWithoutTaxLabel(priceStr) {
+  if (!priceStr || typeof priceStr !== 'string') return priceStr
+  return priceStr.replace(/\s*[·⋅]\s*IVA\s+incluido\s*$/i, '').trim()
+}
+
 export function sortCatalogProducts(products, sortBy) {
   const list = [...products]
   switch (sortBy) {

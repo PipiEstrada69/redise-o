@@ -26,6 +26,13 @@ export const routes = [
   { path: '/contacto', label: 'Contacto' },
 ]
 
+/** PLP/catálogo: sirve para resaltar “Tienda” en la barra y comprobar contexto tienda */
+export const shopNavPaths = ['/tienda', '/barritas', '/geles', '/isotonico', '/packs']
+
+export function isShopNavContext(path) {
+  return path != null && shopNavPaths.includes(path)
+}
+
 export function pathToNavLabel(path) {
   const match = routes.find((r) => r.path === path)
   return match ? match.label : 'Sección'
@@ -61,6 +68,15 @@ export const categories = [
     tag: 'Ahorro visual',
   },
 ]
+
+/** Enlaces del menú Tienda (desplegable / acordeón); alineado con categories */
+export const shopNavSubLinks = [
+  { path: '/tienda', label: 'Ver todo el catálogo' },
+  ...categories.map((c) => ({ path: c.path, label: c.title })),
+]
+
+/** Inicio + Blog + Ciencia + Contacto (sin rutas sueltas de categoría ni /tienda duplicado como botón plano) */
+export const headerFlatNavRoutes = routes.filter((r) => !shopNavPaths.includes(r.path))
 
 export const crownBrandLogoUrl =
   'https://crownsportnutrition.com/wp-content/uploads/2022/06/logo-CROWN-SPORT-NUTRITION1-1.png'
@@ -1003,7 +1019,7 @@ export const shopGoals = [
   { id: 'packs', label: 'Packs / probar' },
 ]
 
-function parsePriceEuro(priceStr) {
+export function parsePriceEuro(priceStr) {
   if (!priceStr || typeof priceStr !== 'string') return null
   const compact = priceStr.replace(/[\s\u00A0\u202F]/g, '')
   const decimal = compact.match(/(\d+)[,.](\d{1,2})/)
@@ -1011,6 +1027,11 @@ function parsePriceEuro(priceStr) {
   const whole = compact.match(/(\d+)(?=€)/)
   if (whole) return parseFloat(whole[1], 10)
   return null
+}
+
+export function formatEuro(amount) {
+  if (amount == null || Number.isNaN(amount)) return '—'
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 }
 
 function inferProductGoals(product) {

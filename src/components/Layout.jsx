@@ -13,6 +13,7 @@ function Layout({
   onQuantityChange,
   cartOpen,
   setCartOpen,
+  onBeginCheckout,
   searchOpen,
   setSearchOpen,
   accountOpen,
@@ -42,6 +43,7 @@ function Layout({
         cartItems={cartItems}
         onClose={() => setCartOpen(false)}
         onQuantityChange={onQuantityChange}
+        onBeginCheckout={onBeginCheckout}
       />
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} navigate={navigate} />
       <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />
