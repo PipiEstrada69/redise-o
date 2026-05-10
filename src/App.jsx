@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
@@ -233,6 +233,87 @@ function App() {
 }
 
 function Hero({ navigate }) {
+  const carouselProducts = useMemo(() => {
+    const featured = visualProducts.filter((p) => p.featured === true)
+    const others = visualProducts.filter((p) => p.featured !== true)
+    return [...featured, ...others].slice(0, 10)
+  }, [])
+
+  const regionRef = useRef(null)
+  const [index, setIndex] = useState(0)
+  const [pauseHover, setPauseHover] = useState(false)
+  const [focusInside, setFocusInside] = useState(false)
+
+  const pauseRotate = pauseHover || focusInside
+
+  useEffect(() => {
+    const el = regionRef.current
+    if (!el) return undefined
+    const onFocusIn = () => setFocusInside(true)
+    const onFocusOut = (e) => {
+      if (!el.contains(e.relatedTarget)) setFocusInside(false)
+    }
+    el.addEventListener('focusin', onFocusIn)
+    el.addEventListener('focusout', onFocusOut)
+    return () => {
+      el.removeEventListener('focusin', onFocusIn)
+      el.removeEventListener('focusout', onFocusOut)
+    }
+  }, [carouselProducts.length])
+
+  useEffect(() => {
+    if (carouselProducts.length <= 1) return undefined
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let id
+    const arm = () => {
+      if (id) clearInterval(id)
+      id = undefined
+      if (mq.matches || pauseRotate) return
+      id = setInterval(() => {
+        setIndex((i) => (i + 1) % carouselProducts.length)
+      }, 5000)
+    }
+    arm()
+    mq.addEventListener('change', arm)
+    return () => {
+      mq.removeEventListener('change', arm)
+      if (id) clearInterval(id)
+    }
+  }, [carouselProducts.length, pauseRotate])
+
+  const current = carouselProducts[index] ?? carouselProducts[0]
+
+  const handleCarouselMouseLeave = () => {
+    const el = regionRef.current
+    if (el?.contains(document.activeElement)) return
+    setPauseHover(false)
+  }
+
+  if (!current) {
+    return (
+      <section className="hero-section hero-section--basic section">
+        <div className="hero-copy hero-copy--brand">
+          <p className="eyebrow">Crown Sport Nutrition</p>
+          <h1 className="hero-brand-headline">
+            Especialistas en alto rendimiento, ciencia aplicada al deporte real
+          </h1>
+          <p className="hero-brand-lead">
+            Con estudios científicos propios, certificación antidopaje Informed Sport y formulaciones desarrolladas
+            junto a universidades, médicos, nutricionistas y deportistas de élite.
+          </p>
+          <div className="hero-actions">
+            <button type="button" className="primary-button" onClick={() => navigate('/tienda')}>
+              Ir a la tienda <ArrowRight size={18} aria-hidden="true" />
+            </button>
+            <button type="button" className="secondary-button" onClick={() => navigate('/ciencia')}>
+              Ciencia y criterios
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="hero-section hero-section--basic section">
       <div className="hero-copy hero-copy--brand">
@@ -253,13 +334,54 @@ function Hero({ navigate }) {
           </button>
         </div>
       </div>
-      <div className="hero-abstract" aria-hidden="true">
-        <div className="hero-abstract__panel">
-          <span className="hero-abstract__kicker">Prototipo académico</span>
-          <p className="hero-abstract__line">Catálogo en Tienda, Barritas, Geles, Isotónico y Packs.</p>
-          <p className="hero-abstract__line hero-abstract__line--muted">
-            Home breve: menos scroll, decisión más rápida.
+      <div
+        ref={regionRef}
+        className="hero-abstract"
+        role="region"
+        aria-roledescription="Carrusel"
+        aria-label="Muestra de productos del catálogo"
+        onMouseEnter={() => setPauseHover(true)}
+        onMouseLeave={handleCarouselMouseLeave}
+      >
+        <div className="hero-abstract__panel hero-abstract__panel--carousel">
+          <p className="visually-hidden" aria-live="polite">
+            {`Producto ${index + 1} de ${carouselProducts.length}: ${current.title}`}
           </p>
+          <span className="hero-abstract__kicker">Desde la tienda</span>
+          <button
+            type="button"
+            className="hero-abstract__product-hit"
+            aria-label={`Ver ficha de ${current.title}`}
+            onClick={() => navigate(current.path)}
+          >
+            {current.image ? (
+              <span className="hero-abstract__thumb">
+                <img src={current.image} alt="" width={112} height={112} decoding="async" />
+              </span>
+            ) : (
+              <span className="hero-abstract__thumb hero-abstract__thumb--placeholder" aria-hidden="true" />
+            )}
+            <span className="hero-abstract__product-copy">
+              <span className="hero-abstract__category">{current.category}</span>
+              <span className="hero-abstract__title">{current.title}</span>
+              <span className="hero-abstract__price">{listPriceWithoutTaxLabel(current.price)}</span>
+              <span className="hero-abstract__hint">Pulsa para ver la ficha</span>
+            </span>
+          </button>
+          {carouselProducts.length > 1 && (
+            <div className="hero-abstract__dots" role="group" aria-label="Elegir producto mostrado">
+              {carouselProducts.map((p, i) => (
+                <button
+                  key={p.slug}
+                  type="button"
+                  aria-label={`Mostrar ${p.title}`}
+                  aria-current={i === index ? 'true' : undefined}
+                  className={`hero-abstract__dot${i === index ? ' is-active' : ''}`}
+                  onClick={() => setIndex(i)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
