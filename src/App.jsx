@@ -12,9 +12,11 @@ import {
   Sparkles,
 } from 'lucide-react'
 import './App.css'
+import { collectionFaqs } from './collectionFaqs.jsx'
 import { sortCatalogProducts } from './catalogUtils'
 import Breadcrumbs from './components/Breadcrumbs'
 import CategoryCard from './components/CategoryCard'
+import CollectionFaqSection from './components/CollectionFaqSection'
 import Layout from './components/Layout'
 import ProductCard from './components/ProductCard'
 import {
@@ -589,6 +591,13 @@ function CollectionPage({ path, navigate, onAdd }) {
             <ProductCard key={product.slug} product={product} navigate={navigate} onAdd={onAdd} />
           ))}
         </div>
+      )}
+
+      {collectionFaqs[path] && (
+        <CollectionFaqSection
+          title={collectionFaqs[path].title}
+          items={collectionFaqs[path].items}
+        />
       )}
     </section>
   )
